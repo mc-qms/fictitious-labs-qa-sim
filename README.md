@@ -18,17 +18,17 @@ worth about 3.3 points, and missing one drops your score by that
 much. Circling
 an entry that holds no discrepancy costs half a point — a stray
 circle is cheap; spraying the page is not. Scoring is exact and
-deterministic: the same circles on the same scenario always produce
+deterministic: the same circles on the same record always produce
 the same score.
 
 **Scope.** Discrepancies are documentation and transcription errors
 only — a value that doesn't match its source, a superseded template,
 a missing verification, a label that disagrees with the record.
 Nobody is asked to check arithmetic; that's peer review, not record
-review. Some scenarios are clean. A clean record reviewed cleanly is
-a perfect score.
+review. Some records are clean — no discrepancy at all. A clean record
+reviewed cleanly is a perfect score.
 
-## Scenario families
+## Record families
 
 - **A280 assay worksheet** (FRM-QC-101) — a completed protein
   concentration worksheet checked against its raw data sheet,
@@ -39,11 +39,10 @@ a perfect score.
   Faults are tagged Easy or Hard; the Hard ones are only catchable
   against the governing documents.
 
-Scenarios are generated correct-by-construction from templates, with
-faults applied from a registered fault list, so the answer key is
-known exactly. The four demo scenarios ship in `scenarios/`; the
-generators (`generator.py`, `batch_generator.py`) can produce more
-from a seed.
+Records are generated fresh for every review: correct-by-
+construction from templates, with a random set of faults applied
+from a registered fault list — possibly none — so the answer key
+is known exactly and no two visits need see the same record.
 
 ## Running locally
 

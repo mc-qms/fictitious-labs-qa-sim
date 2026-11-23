@@ -9,8 +9,8 @@ st.set_page_config(
     layout="wide",
 )
 
-import json
 import os
+import random
 import sys
 
 import streamlit.components.v1 as components
@@ -22,6 +22,7 @@ if BASE not in sys.path:
 from generator import FIELDS, FIELD_LABELS, CATEGORIES  # noqa: E402
 import batch_generator as batch_gen  # noqa: E402
 from scorer import score_circles, FP_PENALTY  # noqa: E402
+from record_deal import deal  # noqa: E402
 from docparse import (  # noqa: E402
     parse_a280, parse_batch, parse_generic,
     with_absent_entries, build_doc_html,
@@ -31,8 +32,6 @@ from docparse import (  # noqa: E402
 # paper form and lets the reviewer circle entries with a red pen.
 _circle_doc = components.declare_component(
     "circle_doc", path=os.path.join(BASE, "components", "circle_doc"))
-
-SCENARIOS_DIR = os.path.join(BASE, "scenarios")
 
 REFERENCES = [
     ("SOP-QA-001", "Good Documentation Practices", "v1.0, Effective"),
@@ -57,34 +56,22 @@ EDMS_URL = "https://fictitious-labs-edms.streamlit.app/"
 
 
 # ------------------------------------------------------------------
-# Scenario loading
+# Dealing records
+#
+# Every record is generated fresh when it is dealt (record_deal):
+# a random seed and a random set of planted faults, possibly
+# none. There is no scenario list to pick from, so nothing about
+# the record is given away before the review - a clean record is
+# always possible, and telling one from a faulty record is the
+# review itself.
 # ------------------------------------------------------------------
 
-def list_scenarios():
-    if not os.path.isdir(SCENARIOS_DIR):
-        return []
-    return sorted(
-        d for d in os.listdir(SCENARIOS_DIR)
-        if os.path.isfile(os.path.join(SCENARIOS_DIR, d, "ground_truth.json"))
-    )
+FAMILY_LABELS = {"a280": "A280 worksheet", "batch_record": "Batch record"}
 
 
-def load_scenario(scenario_id):
-    path = os.path.join(SCENARIOS_DIR, scenario_id)
-    with open(os.path.join(path, "ground_truth.json"), encoding="utf-8") as f:
-        ground_truth = json.load(f)
-    if ground_truth.get("family") == "batch_record":
-        with open(os.path.join(path, "batch_record.md"),
-                  encoding="utf-8") as f:
-            main_md = f.read()
-        with open(os.path.join(path, "issuance.md"), encoding="utf-8") as f:
-            second_md = f.read()
-        return main_md, second_md, ground_truth, "batch_record"
-    with open(os.path.join(path, "worksheet.md"), encoding="utf-8") as f:
-        worksheet_md = f.read()
-    with open(os.path.join(path, "raw_data.md"), encoding="utf-8") as f:
-        raw_md = f.read()
-    return worksheet_md, raw_md, ground_truth, "a280"
+def _deal(family):
+    st.session_state.live_record = deal(random.SystemRandom(), family)
+    st.session_state.record_no = st.session_state.get("record_no", 0) + 1
 
 
 # ------------------------------------------------------------------
@@ -106,17 +93,26 @@ st.caption(
     "real records don't say either."
 )
 
-scenario_ids = list_scenarios()
-if not scenario_ids:
-    st.error(
-        "No scenarios found. Generate one with generator.py "
-        "(it writes to the scenarios/ folder next to this app)."
-    )
-    st.stop()
-
-scenario_id = st.selectbox("Scenario", scenario_ids)
-main_md, second_md, ground_truth, family = load_scenario(scenario_id)
+_pick_col, _new_col = st.columns([3, 1])
+with _pick_col:
+    _family_label = st.radio(
+        "Record to review", list(FAMILY_LABELS.values()),
+        horizontal=True, key="family_pick")
+with _new_col:
+    _new = st.button("New record", key="new_record")
+family = "batch_record" if _family_label == "Batch record" else "a280"
+if st.session_state.get("live_family") != family \
+        or "live_record" not in st.session_state:
+    st.session_state.live_family = family
+    _deal(family)
+elif _new:
+    _deal(family)
+main_md, second_md, ground_truth, family = st.session_state.live_record
 faults = ground_truth["faults"]
+record_id = f"live{st.session_state.record_no}"
+_lot = ground_truth.get("batch_number") or ground_truth.get("lot_number")
+if _lot:
+    st.caption(f"Record under review: {_lot} - Fictitious Labs Inc.")
 
 if family == "batch_record":
     ACTIVE_FIELDS = batch_gen.FIELDS
@@ -139,19 +135,19 @@ second_blocks = parse_generic(second_md)
 
 # --- The record under review: a paper form, click to circle ---
 st.subheader(main_title)
-circled_key = f"circled_{scenario_id}"
+circled_key = f"circled_{record_id}"
 if circled_key not in st.session_state:
     st.session_state[circled_key] = []
-gen_key = f"docgen_{scenario_id}"
+gen_key = f"docgen_{record_id}"
 if gen_key not in st.session_state:
     st.session_state[gen_key] = 0
-submitted_key = f"result_{scenario_id}"
+submitted_key = f"result_{record_id}"
 
 returned = _circle_doc(
     html=build_doc_html(blocks),
     initial=st.session_state[circled_key],
     interactive=True,
-    key=f"doc_{scenario_id}_{st.session_state[gen_key]}",
+    key=f"doc_{record_id}_{st.session_state[gen_key]}",
     default=st.session_state[circled_key],
 )
 if returned is not None:
@@ -171,7 +167,7 @@ with col_second:
         html=build_doc_html(second_blocks),
         initial=[],
         interactive=False,
-        key=f"ref_{scenario_id}",
+        key=f"ref_{record_id}",
         default=None,
     )
 with col_refs:
@@ -193,14 +189,14 @@ st.markdown(
 )
 c_submit, c_clear = st.columns([1, 1])
 with c_submit:
-    if st.button("Submit review", key=f"submit_{scenario_id}",
+    if st.button("Submit review", key=f"submit_{record_id}",
                  type="primary"):
         st.session_state[submitted_key] = {
             "circled": list(circled),
             "result": score_circles(list(circled), faults),
         }
 with c_clear:
-    if st.button("Clear circles", key=f"clear_{scenario_id}"):
+    if st.button("Clear circles", key=f"clear_{record_id}"):
         st.session_state[circled_key] = []
         st.session_state[gen_key] += 1
         st.session_state.pop(submitted_key, None)
