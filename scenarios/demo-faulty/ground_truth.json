@@ -1,0 +1,29 @@
+{
+  "analysis_date": "2026-11-16",
+  "faults": [
+    {
+      "detail": "Worksheet cites TM-QC-101 v2.0 and its 8.5 \u2013 11.5 mg/mL criterion. TM-QC-101 v3.0 (effective 2026-09-14) superseded it with 9.0 \u2013 11.0 mg/mL; the result 8.7 mg/mL fails the current criterion.",
+      "fault_type": "superseded_version",
+      "field": "method_version"
+    },
+    {
+      "detail": "Worksheet lot FL101-2611-001 does not match the raw data sheet lot FL101-2611-010.",
+      "fault_type": "lot_mismatch",
+      "field": "lot_number"
+    },
+    {
+      "detail": "Reading 1 was corrected by obliteration (correction fluid; original entry not legible), with no line-through, initials, or date \u2014 prohibited by SOP-QA-001 \u00a74.3.",
+      "fault_type": "bad_correction",
+      "field": "reading_1"
+    },
+    {
+      "detail": "Blank confirmation initials are absent; the blank check is not attributable to anyone (SOP-QA-001 \u00a74.2).",
+      "fault_type": "missing_initials",
+      "field": "blank_initials"
+    }
+  ],
+  "lot_number": "FL101-2611-010",
+  "sample_id": "QC-2026-0302",
+  "scenario_id": "demo-faulty",
+  "seed": 7
+}

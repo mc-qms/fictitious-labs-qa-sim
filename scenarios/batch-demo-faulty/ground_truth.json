@@ -1,0 +1,26 @@
+{
+  "batch_number": "FL101-2611-031",
+  "family": "batch_record",
+  "faults": [
+    {
+      "detail": "The record was executed on FRM-MF-101 v1.0. QA issued FRM-MF-101 v2.0 for this batch (see the issuance record), and v1.0 was superseded on 2026-08-17: the culture pH range it carries (6.8\u20137.4) was tightened to 6.9\u20137.3, and it does not designate independent verification of the filtration and fill step.",
+      "difficulty": "hard",
+      "fault_type": "superseded_template",
+      "field": "mbr_version"
+    },
+    {
+      "detail": "The batch summary states a final concentration of 14.0 mg/mL; the step 5 entry states 10.4 mg/mL. The summary does not match the record it summarizes.",
+      "difficulty": "easy",
+      "fault_type": "summary_transcription",
+      "field": "summary_concentration"
+    },
+    {
+      "detail": "The label specimen states a protein concentration of 14.0 mg/mL; the batch record states 10.4 mg/mL. Label content is taken from the batch record (WI-MF-001 \u00a73).",
+      "difficulty": "easy",
+      "fault_type": "label_mismatch",
+      "field": "label_concentration"
+    }
+  ],
+  "scenario_id": "batch-demo-faulty",
+  "seed": 12
+}
