@@ -133,6 +133,14 @@ else:
 blocks = with_absent_entries(blocks, ACTIVE_FIELDS)
 second_blocks = parse_generic(second_md)
 
+# Labels for the results screen: the governing labels for record
+# fields, and the row's own label for context entries (Product,
+# Issued by, a step's Performed by line) that a reviewer can also
+# circle - and be wrong about.
+ENTRY_LABELS = {b["field"]: b["label"] for b in blocks
+                if b["kind"] == "row" and b.get("field")}
+ENTRY_LABELS.update(ACTIVE_LABELS)
+
 # --- The record under review: a paper form, click to circle ---
 st.subheader(main_title)
 circled_key = f"circled_{record_id}"
@@ -237,7 +245,8 @@ if submitted_key in st.session_state:
         st.markdown(
             "**False positives** (circled, but no discrepancy there)")
         for flag in result["false_positives"]:
-            st.markdown(f"- **{ACTIVE_LABELS[flag['field']]}**")
+            st.markdown(
+                f"- **{ENTRY_LABELS.get(flag['field'], flag['field'])}**")
     if not faults and not result["false_positives"]:
         st.markdown(
             "This record was clean, and you circled nothing. "

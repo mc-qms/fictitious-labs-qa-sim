@@ -9,10 +9,14 @@ Block model:
   {"kind": "row", "label": str, "value": str,
    "field": field key or None, "absent": bool}
 
-A row with a field is one circleable entry of the record under
-review. Every field of the record appears as exactly one row;
-a field whose entry is missing from the record entirely gets an
-explicit "not present" row (with_absent_entries).
+Every row of the record is one circleable entry. A row whose
+label maps to a record field carries that field key; any other
+row carries a ctx_ key, so the whole form is clickable - the
+reviewer can circle anything on the page, and entries that are
+not record fields simply never hold a planted fault. Every field
+of the record appears as exactly one row; a field whose entry is
+missing from the record entirely gets an explicit "not present"
+row (with_absent_entries).
 """
 
 import html as html_lib
@@ -61,8 +65,22 @@ def _row(label, value, field=None, absent=False):
             "field": field, "absent": absent}
 
 
+def _ctx_key(label, used):
+    """A unique context-entry key for a row that is not a record
+    field: ctx_ + the slugged label, numbered on collision."""
+    base = "ctx_" + re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+    key = base
+    n = 2
+    while key in used:
+        key = f"{base}_{n}"
+        n += 1
+    used.add(key)
+    return key
+
+
 def parse_a280(md_text, fields):
     label_to_key = {label: key for key, label in fields}
+    used = set()
     blocks = []
     for line in md_text.splitlines():
         stripped = line.strip()
@@ -75,8 +93,10 @@ def parse_a280(md_text, fields):
             if _is_table_chrome(cells):
                 continue
             if len(cells) >= 2:
-                blocks.append(
-                    _row(cells[0], cells[1], label_to_key.get(cells[0])))
+                field = label_to_key.get(cells[0])
+                if field is None:
+                    field = _ctx_key(cells[0], used)
+                blocks.append(_row(cells[0], cells[1], field))
         else:
             blocks.append({"kind": "para", "text": stripped})
     return blocks
@@ -97,6 +117,7 @@ def parse_batch(md_text):
     page_refs = []
     section = None
     section_lines = []
+    used = set()
 
     def is_step(title):
         return title is not None and (
@@ -121,6 +142,14 @@ def parse_batch(md_text):
                     label, _, value = ln.partition(": ")
                     blocks.append(
                         _row(label, value, "filtration_verification"))
+                elif ln.startswith("Performed by "):
+                    blocks.append(_row(
+                        "Performed by", ln[len("Performed by "):],
+                        _ctx_key("Performed by", used)))
+                elif ": " in ln:
+                    label, _, value = ln.partition(": ")
+                    blocks.append(
+                        _row(label, value, _ctx_key(label, used)))
                 else:
                     blocks.append({"kind": "para", "text": ln})
             return
@@ -130,7 +159,19 @@ def parse_batch(md_text):
         text = "; ".join(
             ln[len("Entry: "):] if ln.startswith("Entry: ") else ln
             for ln in body)
-        blocks.append(_row(title, text, step_key))
+        # The attribution ("performed by DA, 2026-11-10") is its
+        # own entry, not part of the step's value: a reviewer
+        # circles the value or the signature line, not both at
+        # once. A blank step has no attribution to split off.
+        matches = list(re.finditer(r";\s*[Pp]erformed by\s+", text))
+        if matches:
+            cut = matches[-1]
+            blocks.append(_row(title, text[:cut.start()], step_key))
+            blocks.append(_row(
+                "Performed by", text[cut.end():],
+                f"ctx_{step_key}_performed_by"))
+        else:
+            blocks.append(_row(title, text, step_key))
 
     for line in md_text.splitlines():
         stripped = line.strip()
@@ -158,8 +199,10 @@ def parse_batch(md_text):
                 continue
             if len(cells) >= 2:
                 table_map = _batch_table_map(section)
-                blocks.append(
-                    _row(cells[0], cells[1], table_map.get(cells[0])))
+                field = table_map.get(cells[0])
+                if field is None:
+                    field = _ctx_key(cells[0], used)
+                blocks.append(_row(cells[0], cells[1], field))
             continue
         blocks.append({"kind": "para", "text": stripped})
     flush_section()

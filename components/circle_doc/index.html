@@ -50,7 +50,9 @@
     line-height: 1.35;
   }
   .val {
-    flex: 1;
+    /* Hug the entry text instead of stretching across the cell,
+       so the circled ellipse wraps the writing, not the row. */
+    flex: 0 1 auto;
     position: relative;
     padding: 6px 12px;
     font-family: "Courier New", Courier, monospace;
