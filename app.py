@@ -11,8 +11,9 @@ st.set_page_config(
 
 import json
 import os
-import re
 import sys
+
+import streamlit.components.v1 as components
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
@@ -21,6 +22,15 @@ if BASE not in sys.path:
 from generator import FIELDS, FIELD_LABELS, CATEGORIES  # noqa: E402
 import batch_generator as batch_gen  # noqa: E402
 from scorer import score_circles, FP_PENALTY  # noqa: E402
+from docparse import (  # noqa: E402
+    parse_a280, parse_batch, parse_generic,
+    with_absent_entries, build_doc_html,
+)
+
+# The record renderer: a custom component that draws the record as a
+# paper form and lets the reviewer circle entries with a red pen.
+_circle_doc = components.declare_component(
+    "circle_doc", path=os.path.join(BASE, "components", "circle_doc"))
 
 SCENARIOS_DIR = os.path.join(BASE, "scenarios")
 
@@ -78,206 +88,19 @@ def load_scenario(scenario_id):
 
 
 # ------------------------------------------------------------------
-# Record parsing: markdown -> ordered blocks of ("md", text) and
-# ("entry", field_key, display_text). An entry block is one circleable
-# entry of the record under review.
-# ------------------------------------------------------------------
-
-def _table_cells(line):
-    return [c.strip() for c in line.strip().strip("|").split("|")]
-
-
-def _is_table_chrome(cells):
-    if not cells:
-        return True
-    if all(set(c) <= set("-: ") for c in cells):
-        return True
-    if cells[0] in ("Field", "Item"):
-        return True
-    return False
-
-
-def parse_a280(md_text):
-    label_to_key = {label: key for key, label in FIELDS}
-    blocks = []
-    md_buf = []
-
-    def flush():
-        if md_buf:
-            blocks.append(("md", "\n".join(md_buf)))
-            md_buf.clear()
-
-    for line in md_text.splitlines():
-        if line.strip().startswith("|"):
-            cells = _table_cells(line)
-            if len(cells) >= 2 and cells[0] in label_to_key:
-                flush()
-                entry = cells[1] if cells[1] else "(blank)"
-                blocks.append(
-                    ("entry", label_to_key[cells[0]],
-                     f"{cells[0]} — {entry}"))
-                continue
-            if _is_table_chrome(cells):
-                continue
-            md_buf.append(line)
-        else:
-            md_buf.append(line)
-    flush()
-    return blocks
-
-
-# Table-row label -> field key, by table context. The batch summary
-# repeats the batch number and the label table repeats the retest
-# date, so the maps must be context-specific: each field gets
-# exactly one circleable entry in the whole record.
-BATCH_HEADER_FIELDS = {
-    "Batch number": "batch_number",
-    "Master batch record": "mbr_version",
-}
-BATCH_SUMMARY_FIELDS = {
-    "Final protein concentration": "summary_concentration",
-}
-BATCH_LABEL_FIELDS = {
-    "Protein concentration": "label_concentration",
-    "Retest date": "label_retest",
-}
-
-BATCH_STEP_FIELDS = {
-    "Step 1": "inoculation",
-    "Step 2": "culture_ph",
-    "Step 3": "harvest",
-    "Step 4": "purification",
-}
-
-
-def _batch_table_map(section):
-    if section is None:
-        return BATCH_HEADER_FIELDS
-    if section.startswith("Batch summary"):
-        return BATCH_SUMMARY_FIELDS
-    if section.startswith("Label specimen"):
-        return BATCH_LABEL_FIELDS
-    return {}
-
-
-def parse_batch(md_text):
-    blocks = []
-    md_buf = []
-    page_refs = []
-    section = None        # current ## section title
-    section_lines = []    # body lines of a step section
-
-    def flush_md():
-        if md_buf:
-            blocks.append(("md", "\n".join(md_buf)))
-            md_buf.clear()
-
-    def is_step(title):
-        return title is not None and (
-            title.startswith("Step 5")
-            or any(title.startswith(p) for p in BATCH_STEP_FIELDS))
-
-    def flush_section():
-        nonlocal section_lines
-        if not is_step(section):
-            section_lines = []
-            return
-        title = section
-        body = [ln.strip() for ln in section_lines if ln.strip()]
-        section_lines = []
-        if title.startswith("Step 5"):
-            other = []
-            for ln in body:
-                if ln.startswith("Final protein concentration"):
-                    blocks.append(
-                        ("entry", "final_concentration",
-                         f"Step 5 — {ln}"))
-                elif ln.startswith("Independent verification"):
-                    blocks.append(
-                        ("entry", "filtration_verification",
-                         f"Step 5 — {ln}"))
-                else:
-                    other.append(ln)
-            if other:
-                blocks.append(("md", "**Step 5 — also recorded:** "
-                                 + "; ".join(other)))
-            return
-        step_key = next(
-            key for prefix, key in BATCH_STEP_FIELDS.items()
-            if title.startswith(prefix))
-        text = "; ".join(
-            ln[len("Entry: "):] if ln.startswith("Entry: ") else ln
-            for ln in body)
-        blocks.append(("entry", step_key,
-                       f"{title} — {text if text else '(blank)'}"))
-
-    for line in md_text.splitlines():
-        stripped = line.strip()
-        page_match = re.search(r"Page \d+ of \d+", stripped)
-        if stripped.startswith("*Batch") and page_match:
-            page_refs.append(page_match.group(0))
-            continue
-        if stripped.startswith("## "):
-            flush_section()
-            flush_md()
-            section = stripped[3:].strip()
-            if not is_step(section):
-                md_buf.append(line)
-            continue
-        if is_step(section):
-            section_lines.append(line)
-            continue
-        if stripped.startswith("|"):
-            cells = _table_cells(stripped)
-            table_map = _batch_table_map(section)
-            if len(cells) >= 2 and cells[0] in table_map:
-                flush_md()
-                entry = cells[1] if cells[1] else "(blank)"
-                blocks.append(
-                    ("entry", table_map[cells[0]],
-                     f"{cells[0]} — {entry}"))
-                continue
-            if _is_table_chrome(cells):
-                continue
-            if len(cells) >= 2:
-                md_buf.append(f"**{cells[0]}:** {cells[1]}")
-            continue
-        md_buf.append(line)
-    flush_section()
-    flush_md()
-    if page_refs:
-        blocks.append(
-            ("entry", "page_sequence",
-             "Page sequence — " + " · ".join(page_refs)))
-    return blocks
-
-
-def with_absent_entries(blocks, fields):
-    """Fields with no rendered entry (e.g. a step missing from the
-    record entirely) get an explicit 'not present' entry at the end —
-    noticing an absence is part of the review."""
-    rendered = {b[1] for b in blocks if b[0] == "entry"}
-    absent = [(key, label) for key, label in fields if key not in rendered]
-    if absent:
-        blocks.append(("md", "---\n**Not present in this record:**"))
-        for key, label in absent:
-            blocks.append(("entry", key, f"{label} — (not present)"))
-    return blocks
-
-
-# ------------------------------------------------------------------
 # App
 # ------------------------------------------------------------------
 
 st.title("QA Review Simulator — Fictitious Labs Inc.")
 st.caption(
-    "Review the completed record against the raw data and the governing "
-    "documents in the Fictitious Labs EDMS. Click an entry to circle it "
-    "as a discrepancy. You start with 10 points: every discrepancy you "
-    "miss costs its share, and circling an entry that holds no "
-    f"discrepancy costs {FP_PENALTY:g} points — a stray circle is cheap, "
-    "spraying the page is not. You are not told how many discrepancies "
-    "exist — real records don't say either."
+    "Review the completed record against the source document and the "
+    "governing documents in the Fictitious Labs EDMS. Click an entry "
+    "on the record to circle it as a discrepancy — click again to "
+    "uncircle. You start with 10 points: every discrepancy you miss "
+    "costs its share, and circling an entry that holds no discrepancy "
+    f"costs {FP_PENALTY:g} points — a stray circle is cheap, spraying "
+    "the page is not. You are not told how many discrepancies exist — "
+    "real records don't say either."
 )
 
 scenario_ids = list_scenarios()
@@ -307,41 +130,47 @@ else:
     ACTIVE_REFERENCES = REFERENCES
     main_title = "Worksheet (record under review)"
     second_title = "Raw data sheet"
-    blocks = parse_a280(main_md)
+    blocks = parse_a280(main_md, FIELDS)
 blocks = with_absent_entries(blocks, ACTIVE_FIELDS)
+second_blocks = parse_generic(second_md)
 
-# --- The record under review: click to circle ---
+# --- The record under review: a paper form, click to circle ---
 st.subheader(main_title)
 circled_key = f"circled_{scenario_id}"
 if circled_key not in st.session_state:
-    st.session_state[circled_key] = set()
-circled = st.session_state[circled_key]
+    st.session_state[circled_key] = []
+gen_key = f"docgen_{scenario_id}"
+if gen_key not in st.session_state:
+    st.session_state[gen_key] = 0
+submitted_key = f"result_{scenario_id}"
 
-for block in blocks:
-    if block[0] == "md":
-        st.markdown(block[1])
-    else:
-        _, field_key, display = block
-        is_circled = field_key in circled
-        label = ("⭕ " if is_circled else "○ ") + display
-        if st.button(
-            label,
-            key=f"circle_{scenario_id}_{field_key}",
-            type="primary" if is_circled else "secondary",
-            use_container_width=True,
-        ):
-            if is_circled:
-                circled.discard(field_key)
-            else:
-                circled.add(field_key)
-            st.session_state.pop(f"result_{scenario_id}", None)
-            st.rerun()
+returned = _circle_doc(
+    html=build_doc_html(blocks),
+    initial=st.session_state[circled_key],
+    interactive=True,
+    key=f"doc_{scenario_id}_{st.session_state[gen_key]}",
+    default=st.session_state[circled_key],
+)
+if returned is not None:
+    new_circled = sorted(set(returned))
+    if new_circled != st.session_state[circled_key]:
+        st.session_state[circled_key] = new_circled
+        stored = st.session_state.get(submitted_key)
+        if stored and stored["circled"] != new_circled:
+            st.session_state.pop(submitted_key, None)
+circled = st.session_state[circled_key]
 
 # --- The comparison document and the governing references ---
 col_second, col_refs = st.columns(2)
 with col_second:
     st.subheader(second_title)
-    st.markdown(second_md)
+    _circle_doc(
+        html=build_doc_html(second_blocks),
+        initial=[],
+        interactive=False,
+        key=f"ref_{scenario_id}",
+        default=None,
+    )
 with col_refs:
     st.subheader("Governing references")
     st.markdown(
@@ -359,18 +188,18 @@ st.markdown(
     f"{'entry' if len(circled) == 1 else 'entries'} circled.** "
     "Submit when your review is complete."
 )
-submitted_key = f"result_{scenario_id}"
 c_submit, c_clear = st.columns([1, 1])
 with c_submit:
     if st.button("Submit review", key=f"submit_{scenario_id}",
                  type="primary"):
         st.session_state[submitted_key] = {
-            "circled": sorted(circled),
-            "result": score_circles(sorted(circled), faults),
+            "circled": list(circled),
+            "result": score_circles(list(circled), faults),
         }
 with c_clear:
     if st.button("Clear circles", key=f"clear_{scenario_id}"):
-        circled.clear()
+        st.session_state[circled_key] = []
+        st.session_state[gen_key] += 1
         st.session_state.pop(submitted_key, None)
         st.rerun()
 

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  /* The paper sheet */
+  .paper {
+    background: #fffdf4;
+    color: #1c1a17;
+    border: 1px solid #b9b0a0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+    padding: 24px 28px 28px;
+    margin: 12px 14px 16px;
+  }
+  .doc-title {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: 0.2px;
+  }
+  .doc-section {
+    font-size: 16px;
+    margin: 20px 0 8px;
+    padding-bottom: 3px;
+    border-bottom: 1.5px solid #6d675c;
+  }
+  .para {
+    font-size: 14px;
+    line-height: 1.45;
+    margin: 7px 0;
+  }
+  /* Form rows: label cell + entry cell, like a paper form */
+  .row {
+    display: flex;
+    border: 1px solid #8a8378;
+    margin-top: -1px;
+  }
+  .lbl {
+    flex: 0 0 33%;
+    background: #efe9d8;
+    border-right: 1px solid #8a8378;
+    padding: 6px 9px;
+    font-size: 13.5px;
+    font-weight: bold;
+    line-height: 1.35;
+  }
+  .val {
+    flex: 1;
+    position: relative;
+    padding: 6px 12px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13.5px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .row.absent .val {
+    color: #9c2b2b;
+    font-style: italic;
+  }
+  /* Clickable entries and the red pen */
+  body.interactive [data-field] { cursor: pointer; }
+  body.interactive [data-field]:hover .val { background: #fbf0da; }
+  .row.circled .val::after {
+    content: "";
+    position: absolute;
+    inset: -5px -7px;
+    border: 3px solid rgba(196, 12, 12, 0.82);
+    border-radius: 52% 48% 55% 45% / 62% 58% 42% 38%;
+    transform: rotate(-1.4deg);
+    pointer-events: none;
+  }
+  .row.circled .val::before {
+    content: "";
+    position: absolute;
+    inset: -3px -5px;
+    border: 1.5px solid rgba(196, 12, 12, 0.35);
+    border-radius: 48% 52% 46% 54% / 55% 48% 52% 45%;
+    transform: rotate(0.8deg);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function () {
+  var root = document.getElementById("root");
+  var circled = new Set();
+  var interactive = false;
+  var lastDocKey = null;
+
+  function send(type, data) {
+    var msg = { type: type };
+    for (var k in data) msg[k] = data[k];
+    window.parent.postMessage(msg, "*");
+  }
+
+  function sendValue() {
+    send("streamlit:setComponentValue", {
+      value: Array.from(circled),
+      dataType: "json"
+    });
+  }
+
+  function sendHeight() {
+    var h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+    send("streamlit:setFrameHeight", { height: h });
+  }
+
+  function applyClasses() {
+    var els = root.querySelectorAll("[data-field]");
+    for (var i = 0; i < els.length; i++) {
+      var f = els[i].getAttribute("data-field");
+      els[i].classList.toggle("circled", circled.has(f));
+    }
+  }
+
+  root.addEventListener("click", function (e) {
+    if (!interactive) return;
+    var el = e.target;
+    while (el && el !== root && !el.getAttribute("data-field")) {
+      el = el.parentElement;
+    }
+    if (!el || el === root) return;
+    var f = el.getAttribute("data-field");
+    if (circled.has(f)) { circled.delete(f); } else { circled.add(f); }
+    el.classList.toggle("circled", circled.has(f));
+    sendValue();
+  });
+
+  window.addEventListener("message", function (e) {
+    var data = e.data;
+    if (!data || data.type !== "streamlit:render") return;
+    var args = data.args || {};
+    var docKey = JSON.stringify([args.html, args.interactive]);
+    if (docKey !== lastDocKey) {
+      lastDocKey = docKey;
+      interactive = !!args.interactive;
+      document.body.classList.toggle("interactive", interactive);
+      root.innerHTML = args.html || "";
+      circled = new Set(args.initial || []);
+      applyClasses();
+    }
+    sendHeight();
+  });
+
+  window.addEventListener("resize", sendHeight);
+  send("streamlit:componentReady", { apiVersion: 1 });
+  sendHeight();
+})();
+</script>
+</body>
+</html>
