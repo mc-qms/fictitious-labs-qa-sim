@@ -96,7 +96,9 @@
   var lastDocKey = null;
 
   function send(type, data) {
-    var msg = { type: type };
+    // isStreamlitMessage is required: the Streamlit frontend drops
+    // component messages that do not carry it.
+    var msg = { type: type, isStreamlitMessage: true };
     for (var k in data) msg[k] = data[k];
     window.parent.postMessage(msg, "*");
   }

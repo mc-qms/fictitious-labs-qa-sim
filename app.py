@@ -96,9 +96,10 @@ st.caption(
     "Review the completed record against the source document and the "
     "governing documents in the Fictitious Labs EDMS. Click an entry "
     "on the record to circle it as a discrepancy — click again to "
-    "uncircle. You start with 10 points: every discrepancy you miss "
-    "costs its share, and circling an entry that holds no discrepancy "
-    f"costs {FP_PENALTY:g} points — a stray circle is cheap, spraying "
+    "uncircle. Scoring: you start with 10 points, and the planted "
+    "discrepancies split those 10 points evenly — each one you miss "
+    "costs you its share. Circling an entry that holds no discrepancy "
+    f"costs {FP_PENALTY:g} points: a stray circle is cheap, spraying "
     "the page is not. You are not told how many discrepancies exist — "
     "real records don't say either."
 )
