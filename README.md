@@ -12,8 +12,10 @@ list of the governing documents, which live in the companion
 Click any entry on the record to circle it as a discrepancy, then
 submit your review.
 
-**Scoring.** You start with 10 points. Every planted discrepancy is
-worth an equal share of the 10, so a miss costs its share. Circling
+**Scoring.** You start with 10 points. Each planted discrepancy is
+worth an equal slice of the 10 points — with 3 planted, each is
+worth about 3.3 points, and missing one drops your score by that
+much. Circling
 an entry that holds no discrepancy costs half a point — a stray
 circle is cheap; spraying the page is not. Scoring is exact and
 deterministic: the same circles on the same scenario always produce

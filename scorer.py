@@ -11,9 +11,10 @@ Pure functions, no I/O. Two scoring modes:
 - score_circles(): the click-to-circle mode used by the app. The
   reviewer circles entries on the record itself; only the location
   counts. Scoring starts at 10 points: each planted fault is worth
-  an equal share of the 10, and each circled entry that holds no
-  discrepancy costs FP_PENALTY points (a stray circle is cheap;
-  spraying the page is not). The score never goes below 0.
+  an equal slice of the 10 (with 3 planted, about 3.3 points each),
+  and each circled entry that holds no discrepancy costs FP_PENALTY
+  points (a stray circle is cheap; spraying the page is not). The
+  score never goes below 0.
 """
 
 FP_PENALTY = 0.5
