@@ -163,8 +163,7 @@ if not st.session_state.get("round_started", False):
     st.markdown(
         "Your record is dealt and waiting under the cover sheet. "
         "Press **Start review** when you are ready — the record "
-        "appears and your review time starts. The time is reported "
-        "with your score; it never affects it."
+        "appears, and your review begins."
     )
     if st.button("Start review", key="start_review", type="primary"):
         st.session_state.round_started = True

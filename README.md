@@ -11,8 +11,7 @@ list of the governing documents, which live in the companion
 [Fictitious Labs EDMS](https://fictitious-labs-edms.streamlit.app/).
 Click any entry on the record to circle it as a discrepancy, then
 submit your review. Each record waits under a cover sheet until you
-press **Start review**; your review time starts then and is reported
-alongside your score — it never affects the score.
+press **Start review**.
 
 **Scoring.** You start with 10 points. Each planted discrepancy is
 worth an equal slice of the 10 points — with 3 planted, each is
@@ -21,7 +20,8 @@ much. Circling
 an entry that holds no discrepancy costs half a point — a stray
 circle is cheap; spraying the page is not. Scoring is exact and
 deterministic: the same circles on the same record always produce
-the same score.
+the same score. Your review time is reported with your score; it
+never affects it.
 
 **Scope.** Discrepancies are documentation and transcription errors
 only — a value that doesn't match its source, a superseded template,
