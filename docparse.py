@@ -140,6 +140,11 @@ def parse_batch(md_text):
                     blocks.append(_row(label, value, "final_concentration"))
                 elif ln.startswith("Independent verification"):
                     label, _, value = ln.partition(": ")
+                    # The entry reads as initials + date, like the
+                    # Performed by entries; "Verified by" is the
+                    # label's job, not part of the entry.
+                    if value.startswith("Verified by "):
+                        value = value[len("Verified by "):]
                     blocks.append(
                         _row(label, value, "filtration_verification"))
                 elif ln.startswith("Performed by "):
