@@ -184,17 +184,20 @@ submitted_key = f"result_{record_id}"
 returned = _circle_doc(
     html=build_doc_html(blocks),
     initial=st.session_state[circled_key],
-    interactive=True,
+    # Once the review is submitted the record locks: the circles
+    # stay visible under the outcome, but nothing can be circled,
+    # cleared, or resubmitted. A better score takes a fresh record.
+    interactive=submitted_key not in st.session_state,
     key=f"doc_{record_id}_{st.session_state[gen_key]}",
     default=st.session_state[circled_key],
 )
 if returned is not None:
     new_circled = sorted(set(returned))
     if new_circled != st.session_state[circled_key]:
-        st.session_state[circled_key] = new_circled
-        stored = st.session_state.get(submitted_key)
-        if stored and stored["circled"] != new_circled:
-            st.session_state.pop(submitted_key, None)
+        if submitted_key in st.session_state:
+            pass  # locked: a submitted review cannot be edited
+        else:
+            st.session_state[circled_key] = new_circled
 circled = st.session_state[circled_key]
 
 # --- The comparison document and the governing references ---
@@ -220,27 +223,36 @@ with col_refs:
 
 # --- Submit ---
 st.subheader("Your review")
-st.markdown(
-    f"**{len(circled)} "
-    f"{'entry' if len(circled) == 1 else 'entries'} circled.** "
-    "Submit when your review is complete."
-)
-c_submit, c_clear = st.columns([1, 1])
-with c_submit:
-    if st.button("Submit review", key=f"submit_{record_id}",
-                 type="primary"):
-        st.session_state[submitted_key] = {
-            "circled": list(circled),
-            "result": score_circles(list(circled), faults),
-            "elapsed": time.time() - st.session_state.get(
-                "round_start_ts", time.time()),
-        }
-with c_clear:
-    if st.button("Clear circles", key=f"clear_{record_id}"):
-        st.session_state[circled_key] = []
-        st.session_state[gen_key] += 1
-        st.session_state.pop(submitted_key, None)
-        st.rerun()
+if submitted_key in st.session_state:
+    st.markdown(
+        f"**{len(circled)} "
+        f"{'entry' if len(circled) == 1 else 'entries'} circled.** "
+        "Review submitted — this record is locked. "
+        "Deal a New record to review again."
+    )
+else:
+    st.markdown(
+        f"**{len(circled)} "
+        f"{'entry' if len(circled) == 1 else 'entries'} circled.** "
+        "Submit when your review is complete."
+    )
+    c_submit, c_clear = st.columns([1, 1])
+    with c_submit:
+        if st.button("Submit review", key=f"submit_{record_id}",
+                     type="primary"):
+            st.session_state[submitted_key] = {
+                "circled": list(circled),
+                "result": score_circles(list(circled), faults),
+                "elapsed": time.time() - st.session_state.get(
+                    "round_start_ts", time.time()),
+            }
+            st.rerun()
+    with c_clear:
+        if st.button("Clear circles", key=f"clear_{record_id}"):
+            st.session_state[circled_key] = []
+            st.session_state[gen_key] += 1
+            st.session_state.pop(submitted_key, None)
+            st.rerun()
 
 # --- Score screen ---
 if submitted_key in st.session_state:
