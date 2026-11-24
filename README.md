@@ -10,7 +10,9 @@ must agree with (an FL-EDMS issuance record, a raw data sheet) and a
 list of the governing documents, which live in the companion
 [Fictitious Labs EDMS](https://fictitious-labs-edms.streamlit.app/).
 Click any entry on the record to circle it as a discrepancy, then
-submit your review.
+submit your review. Each record waits under a cover sheet until you
+press **Start review**; your review time starts then and is reported
+alongside your score — it never affects the score.
 
 **Scoring.** You start with 10 points. Each planted discrepancy is
 worth an equal slice of the 10 points — with 3 planted, each is

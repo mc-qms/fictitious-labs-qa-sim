@@ -12,6 +12,7 @@ st.set_page_config(
 import os
 import random
 import sys
+import time
 
 import streamlit.components.v1 as components
 
@@ -73,6 +74,13 @@ def _deal(family, mode):
     st.session_state.live_record = deal(
         random.SystemRandom(), family, mode)
     st.session_state.record_no = st.session_state.get("record_no", 0) + 1
+    st.session_state.round_started = False
+    st.session_state.pop("round_start_ts", None)
+
+
+def _fmt_elapsed(seconds):
+    total = int(round(seconds))
+    return f"{total // 60}:{total % 60:02d}"
 
 
 # ------------------------------------------------------------------
@@ -150,6 +158,20 @@ ENTRY_LABELS = {b["field"]: b["label"] for b in blocks
                 if b["kind"] == "row" and b.get("field")}
 ENTRY_LABELS.update(ACTIVE_LABELS)
 
+# --- The round gate: the record stays covered until Start ---
+if not st.session_state.get("round_started", False):
+    st.markdown(
+        "Your record is dealt and waiting under the cover sheet. "
+        "Press **Start review** when you are ready — the record "
+        "appears and your review time starts. The time is reported "
+        "with your score; it never affects it."
+    )
+    if st.button("Start review", key="start_review", type="primary"):
+        st.session_state.round_started = True
+        st.session_state.round_start_ts = time.time()
+        st.rerun()
+    st.stop()
+
 # --- The record under review: a paper form, click to circle ---
 st.subheader(main_title)
 circled_key = f"circled_{record_id}"
@@ -211,6 +233,8 @@ with c_submit:
         st.session_state[submitted_key] = {
             "circled": list(circled),
             "result": score_circles(list(circled), faults),
+            "elapsed": time.time() - st.session_state.get(
+                "round_start_ts", time.time()),
         }
 with c_clear:
     if st.button("Clear circles", key=f"clear_{record_id}"):
@@ -227,11 +251,14 @@ if submitted_key in st.session_state:
 
     st.divider()
     st.subheader("Review outcome")
-    m0, m1, m2, m3 = st.columns(4)
+    m0, m1, m2, m3, m4 = st.columns(5)
     m0.metric("Score", f"{result['points']:g} / 10")
     m1.metric("Caught", counts["caught"])
     m2.metric("Missed", counts["missed"])
     m3.metric("False positives", counts["false_positives"])
+    _elapsed = outcome.get("elapsed")
+    m4.metric("Review time",
+              _fmt_elapsed(_elapsed) if _elapsed is not None else "—")
 
     def _fault_line(fault):
         difficulty = fault.get("difficulty")
