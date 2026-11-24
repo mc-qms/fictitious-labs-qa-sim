@@ -69,8 +69,9 @@ EDMS_URL = "https://fictitious-labs-edms.streamlit.app/"
 FAMILY_LABELS = {"a280": "A280 worksheet", "batch_record": "Batch record"}
 
 
-def _deal(family):
-    st.session_state.live_record = deal(random.SystemRandom(), family)
+def _deal(family, mode):
+    st.session_state.live_record = deal(
+        random.SystemRandom(), family, mode)
     st.session_state.record_no = st.session_state.get("record_no", 0) + 1
 
 
@@ -98,15 +99,23 @@ with _pick_col:
     _family_label = st.radio(
         "Record to review", list(FAMILY_LABELS.values()),
         horizontal=True, key="family_pick")
+    _mode_label = st.radio(
+        "Difficulty", ["Easy", "Hard"],
+        horizontal=True, key="mode_pick")
+    st.caption("Minor GDP errors, if any" if _mode_label == "Easy"
+               else "May require referencing the EDMS")
 with _new_col:
     _new = st.button("New record", key="new_record")
 family = "batch_record" if _family_label == "Batch record" else "a280"
+mode = "easy" if _mode_label == "Easy" else "hard"
 if st.session_state.get("live_family") != family \
+        or st.session_state.get("live_mode") != mode \
         or "live_record" not in st.session_state:
     st.session_state.live_family = family
-    _deal(family)
+    st.session_state.live_mode = mode
+    _deal(family, mode)
 elif _new:
-    _deal(family)
+    _deal(family, mode)
 main_md, second_md, ground_truth, family = st.session_state.live_record
 faults = ground_truth["faults"]
 record_id = f"live{st.session_state.record_no}"

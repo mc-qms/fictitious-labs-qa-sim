@@ -207,7 +207,11 @@ def parse_batch(md_text):
                 field = table_map.get(cells[0])
                 if field is None:
                     field = _ctx_key(cells[0], used)
-                blocks.append(_row(cells[0], cells[1], field))
+                value = cells[1]
+                if cells[0] == "Components used":
+                    # One component per line on the paper form.
+                    value = value.replace("; ", "\n")
+                blocks.append(_row(cells[0], value, field))
             continue
         blocks.append({"kind": "para", "text": stripped})
     flush_section()

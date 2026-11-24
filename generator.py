@@ -51,7 +51,7 @@ FIELDS = [
     ("reported_result", "Reported result (mg/mL)"),
     ("acceptance_criterion", "Acceptance criterion (mg/mL)"),
     ("within_criterion", "Result within criterion? (Y/N)"),
-    ("verification", "Second-person verification (initials/date)"),
+    ("verification", "Peer review (initials/date)"),
     ("qa_review", "QA review (initials/date)"),
 ]
 FIELD_LABELS = dict(FIELDS)
@@ -68,6 +68,20 @@ CATEGORIES = {
     "blank_required": "Required field left blank",
 }
 FAULT_TYPES = list(CATEGORIES)
+
+# Difficulty per fault: Easy faults are visible on the worksheet
+# itself; the Hard one is only catchable against the governing
+# documents (the current TM-QC-101 in the EDMS).
+DIFFICULTY = {
+    "transcription_value": "easy",
+    "lot_mismatch": "easy",
+    "missing_initials": "easy",
+    "bad_correction": "easy",
+    "wrong_precision": "easy",
+    "date_sequence": "easy",
+    "blank_required": "easy",
+    "superseded_version": "hard",
+}
 
 
 def _round_half_up(value, places):
@@ -298,6 +312,9 @@ def build_scenario(seed, faults, scenario_id):
         f"| Result (mg/mL) | {raw_fields['reported_result']} |",
     ]
     raw_md = "\n".join(raw_lines) + "\n"
+
+    for entry in planted:
+        entry["difficulty"] = DIFFICULTY[entry["fault_type"]]
 
     ground_truth = {
         "scenario_id": scenario_id,

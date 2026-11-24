@@ -36,8 +36,14 @@ reviewed cleanly is a perfect score.
 - **Executed batch record** (FRM-MF-101) — a six-page batch record
   checked against its master batch record (current and superseded
   versions), its issuance record, and the packaging instructions.
-  Faults are tagged Easy or Hard; the Hard ones are only catchable
-  against the governing documents.
+
+## Difficulty
+
+- **Easy** — minor GDP errors, if any. A few surface slips at
+  most, every one visible on the record itself.
+- **Hard** — may require referencing the EDMS. The full fault
+  range, from clean records to rare heavy ones, including faults
+  only catchable against the governing documents.
 
 Records are generated fresh for every review: correct-by-
 construction from templates, with a random set of faults applied

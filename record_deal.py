@@ -9,39 +9,53 @@ and telling one from a faulty record is the review itself.
 The generators are correct-by-construction (generator.py,
 batch_generator.py): the record is built right, then the sampled
 faults are applied from the family's registered fault list, so
-the answer key is known exactly. Fault counts run 0-4, weighted
-so a clean record comes up roughly one deal in five — common
-enough to keep a reviewer honest, not so common that finding
-faults feels like the trick.
+the answer key is known exactly.
+
+Two difficulties. Easy deals only Easy-tagged faults — minor
+GDP errors — and never many (0-3). Hard deals from the family's
+full fault list across a wider count range (0-6): clean records
+still come up, and a tail of heavy records (5-6 faults) comes
+up about one deal in seven. Either way a clean record is always
+possible, so finding nothing remains a real answer.
 """
 
 import generator as a280_gen
 import batch_generator as batch_gen
 
-# Weights for fault counts 0, 1, 2, 3, 4.
-_COUNT_WEIGHTS = [2, 3, 3, 2, 1]
+# Weights for fault counts, per mode, indexed by the count.
+_COUNT_WEIGHTS = {
+    "easy": [2, 3, 2, 1],
+    "hard": [2, 3, 3, 3, 2, 1, 1],
+}
 
 _FAMILIES = {
-    "a280": (a280_gen.build_scenario, a280_gen.FAULT_TYPES),
-    "batch_record": (batch_gen.build_scenario, batch_gen.FAULT_TYPES),
+    "a280": (a280_gen.build_scenario, a280_gen.FAULT_TYPES,
+             a280_gen.DIFFICULTY),
+    "batch_record": (batch_gen.build_scenario, batch_gen.FAULT_TYPES,
+                     batch_gen.DIFFICULTY),
 }
 
 
-def deal(rng, family):
+def deal(rng, family, mode="hard"):
     """Deal one record. `rng` is a random.Random-like object.
 
     Returns (main_md, second_md, ground_truth, family): the record
     under review, the document it is checked against, and the
     ground truth whose "faults" list is the answer key.
     """
-    build, fault_types = _FAMILIES[family]
-    count = rng.choices(range(len(_COUNT_WEIGHTS)),
-                        weights=_COUNT_WEIGHTS)[0]
+    build, fault_types, difficulty = _FAMILIES[family]
+    if mode == "easy":
+        pool = [f for f in fault_types if difficulty[f] == "easy"]
+    else:
+        pool = list(fault_types)
+    weights = _COUNT_WEIGHTS[mode]
+    count = rng.choices(range(len(weights)), weights=weights)[0]
+    count = min(count, len(pool))
     attempts = 0
     while True:
         attempts += 1
         seed = rng.randrange(1, 2 ** 31)
-        faults = rng.sample(fault_types, count) if count else []
+        faults = rng.sample(pool, count) if count else []
         try:
             scenario = build(seed, faults, f"live-{seed}")
         except ValueError:
