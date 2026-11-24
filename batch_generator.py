@@ -260,10 +260,9 @@ def build_scenario(seed, faults, scenario_id):
         "| Product | FL-101, monoclonal antibody drug substance |",
         f"| Issued by | {QA_ISSUER_INITIALS} (Quality Assurance), "
         f"{d_issue.isoformat()} |",
-        "",
-        "Components used: WCB vial lot "
-        f"{wcb_lot}; basal medium MED-200; feed medium MED-210; "
-        "capture resin RES-310; sterilizing filter FLT-022.",
+        f"| Components used | WCB vial lot {wcb_lot}; basal medium "
+        "MED-200; feed medium MED-210; capture resin RES-310; "
+        "sterilizing filter FLT-022 |",
         "",
         footer(1),
         "",

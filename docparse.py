@@ -61,7 +61,7 @@ def _is_table_chrome(cells):
 
 def _row(label, value, field=None, absent=False):
     return {"kind": "row", "label": label,
-            "value": value if value else "(blank)",
+            "value": value if value is not None else "",
             "field": field, "absent": absent}
 
 
@@ -252,8 +252,9 @@ def with_absent_entries(blocks, fields):
 
 def _fmt(text):
     # The generators mark a blank entry as *(blank)* (markdown
-    # italics); on paper it is just the words.
-    text = text.replace("*(blank)*", "(blank)")
+    # italics); on paper a blank entry is an absence, not a word,
+    # so it renders as an empty entry cell.
+    text = text.replace("*(blank)*", "")
     escaped = html_lib.escape(text)
     return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
 
@@ -269,12 +270,18 @@ def build_doc_html(blocks):
         elif b["kind"] == "para":
             parts.append(f'<p class="para">{_fmt(b["text"])}</p>')
         elif b["kind"] == "row":
-            cls = "row absent" if b.get("absent") else "row"
+            value = _fmt(b["value"])
+            cls = "row"
+            if b.get("absent"):
+                cls += " absent"
+            if not value:
+                cls += " blank"
             field_attr = (f' data-field="{b["field"]}"'
                           if b.get("field") else "")
             parts.append(
                 f'<div class="{cls}"{field_attr}>'
                 f'<span class="lbl">{_fmt(b["label"])}</span>'
-                f'<span class="val">{_fmt(b["value"])}</span></div>')
+                f'<span class="val"><span class="vt">{value}</span>'
+                f'</span></div>')
     parts.append("</div>")
     return "".join(parts)
