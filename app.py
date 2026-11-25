@@ -48,6 +48,8 @@ BATCH_REFERENCES = [
     ("SOP-QA-027", "Batch Record Content and Control", "v1.0, Effective"),
     ("FRM-MF-101", "Master Batch Record, FL-101 Drug Substance",
      "v2.0, Effective (v1.0, Superseded)"),
+    ("SPEC-QC-101", "FL-101 Drug Substance Specification",
+     "v2.0, Effective"),
     ("WI-MF-001", "Packaging and Labeling Instructions, FL-101",
      "v1.0, Effective"),
     ("SOP-QA-006", "Batch Record Review and Product Release",
