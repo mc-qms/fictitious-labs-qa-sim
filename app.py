@@ -39,7 +39,7 @@ REFERENCES = [
     ("SOP-QA-002", "Reporting Numerical Values", "v1.0, Effective"),
     ("TM-QC-101", "Protein Concentration by UV Absorbance (A280), FL-101",
      "v3.0, Effective"),
-    ("SPEC-QC-101", "FL-101 Drug Substance Specification",
+    ("SPEC-101", "FL-101 Drug Substance Specification",
      "v2.0, Effective"),
     ("FRM-QC-101", "A280 Assay Worksheet", "v2.0, Effective"),
 ]
@@ -48,7 +48,7 @@ BATCH_REFERENCES = [
     ("SOP-QA-027", "Batch Record Content and Control", "v1.0, Effective"),
     ("FRM-MF-101", "Master Batch Record, FL-101 Drug Substance",
      "v2.0, Effective (v1.0, Superseded)"),
-    ("SPEC-QC-101", "FL-101 Drug Substance Specification",
+    ("SPEC-101", "FL-101 Drug Substance Specification",
      "v2.0, Effective"),
     ("WI-MF-001", "Packaging and Labeling Instructions, FL-101",
      "v1.0, Effective"),
