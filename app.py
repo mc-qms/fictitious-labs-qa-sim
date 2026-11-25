@@ -39,6 +39,8 @@ REFERENCES = [
     ("SOP-QA-002", "Reporting Numerical Values", "v1.0, Effective"),
     ("TM-QC-101", "Protein Concentration by UV Absorbance (A280), FL-101",
      "v3.0, Effective"),
+    ("SPEC-QC-101", "FL-101 Drug Substance Specification",
+     "v2.0, Effective"),
     ("FRM-QC-101", "A280 Assay Worksheet", "v2.0, Effective"),
 ]
 
